@@ -4,13 +4,10 @@ MODEL_NAME=$1
 DATA_DIR=$2
 CACHE_DIR=$3
 OUTPUT_DIR=$4
-PACKING=$5
-TRAIN_ON_SOURCE=${6:-True}
-CONTINUE_ON=${7:-Empty}
+TRAIN_ON_SOURCE=${5:-False}
 
-python sft_qlora.py \
+python qlora.py \
     --model_name_or_path ${MODEL_NAME} \
-    --continue_on ${CONTINUE_ON} \
     --cache_dir ${CACHE_DIR} \
     --output_dir ${OUTPUT_DIR} \
     --logging_steps 1 \
@@ -23,9 +20,8 @@ python sft_qlora.py \
     --dataloader_num_workers 1 \
     --group_by_length \
     --logging_strategy steps \
-    --packing ${PACKING}\
     --train_on_source ${TRAIN_ON_SOURCE}\
-    --remove_unused_columns True \
+    --remove_unused_columns False \
     --do_train \
     --lora_r 64 \
     --lora_alpha 16 \

@@ -17,6 +17,21 @@ def random_sample(data_num):
     df.to_csv("flan_sampled_" + str(data_num) + '.csv')
 
 
+def download_lima():
+    dataset = load_dataset("GAIR/lima", split='train', token='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')
+    df = pd.DataFrame(dataset)
+    conversations = df['conversations'].tolist()
+    inputs = []
+    rounds = []
+    outputs = []
+    for c in conversations:
+        rounds.append(len(c))
+        inputs.append(c[0])
+        outputs.append(c[1])
+    print(sum(rounds)/len(rounds))
+    pd.DataFrame({'instruction': inputs, 'response': outputs}).to_csv('lima_parsed.csv', index=False)
+
+
 def task_name_count():
     task_name_counts = Counter()
     dataset_stream = load_dataset("Open-Orca/FLAN", split='train', streaming=True, batch_size=10000,
@@ -36,4 +51,5 @@ def task_name_count():
 
 
 if __name__ == '__main__':
-    random_sample(100000)
+    # random_sample(100000)
+    download_lima()

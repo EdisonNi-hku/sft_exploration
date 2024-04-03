@@ -50,6 +50,7 @@ class ModelArguments:
     model_name_or_path: Optional[str] = field(
         default="HuggingFaceH4/zephyr-7b-beta"
     )
+    continue_on: str = field(default='Empty')
 
 
 @dataclass
@@ -404,7 +405,8 @@ def make_data_module(tokenizer: transformers.PreTrainedTokenizer, args) -> Dict:
                 return template_ids
             elif "zephyr" in model_name:
                 return "\n<|assistant|>\n"
-            return ''
+            else:
+                return "<start_of_turn>model\n" # ChatLM as default
 
         data_collator = DataCollatorForCompletionOnlyLM(get_response_template(args.model_name_or_path, tokenizer), tokenizer=tokenizer)
 
@@ -441,16 +443,6 @@ def train():
     ))
     model_args, data_args, training_args, generation_args, extra_args = \
         hfparser.parse_args_into_dataclasses(return_remaining_strings=True)
-    print(model_args)
-    print('++++model_args')
-    print(data_args)
-    print('++++data_args')
-    print(training_args)
-    print('++++training_args')
-    print(generation_args)
-    print('++++generation_args')
-    print(extra_args)
-    print('++++extra_args')
     training_args.generation_config = transformers.GenerationConfig(**vars(generation_args))
     args = argparse.Namespace(
         **vars(model_args), **vars(data_args), **vars(training_args)
@@ -460,6 +452,10 @@ def train():
     checkpoint_dir, completed_training = get_last_checkpoint(args.output_dir)
     if completed_training:
         print('Detected that training was already completed!')
+
+    if 'checkpoint-' in args.continue_on:
+        checkpoint_dir = args.continue_on
+    print(checkpoint_dir)
 
     model, tokenizer = get_accelerate_model(args, checkpoint_dir)
 

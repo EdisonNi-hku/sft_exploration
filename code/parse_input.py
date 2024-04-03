@@ -10,7 +10,7 @@ If a question does not make any sense, or is not factually coherent, explain why
 """
 
 
-def format_instruction(tokenizer, system, input, output, no_system=False):
+def format_instruction(tokenizer, system, input, output, no_system=False, only_generation=True):
     if no_system:
         chat_full = [
             {"role": "user", "content": system + '\n\n' + input},
@@ -29,7 +29,7 @@ def format_instruction(tokenizer, system, input, output, no_system=False):
             {"role": "system", "content": system},
             {"role": "user", "content": input},
         ]
-    formatted_input = tokenizer.apply_chat_template(chat_prompt, tokenize=False, add_generation_prompt=True)
+    formatted_input = tokenizer.apply_chat_template(chat_prompt, tokenize=False, add_generation_prompt=only_generation)
     formatted_full = tokenizer.apply_chat_template(chat_full, tokenize=False, add_generation_prompt=False)
     formatted_output = formatted_full.replace(formatted_input, '')
     return formatted_input, formatted_output
@@ -44,6 +44,7 @@ if __name__ == '__main__':
     parser.add_argument("--data_path", type=str, default="")
     parser.add_argument("--output_path", type=str, default="")
     parser.add_argument("--sample", type=int, default=-1)
+    parser.add_argument("--only_generation", action='store_true', default=False)
     args = parser.parse_args()
 
     tokenizer = AutoTokenizer.from_pretrained(args.model, cache_dir=args.cache, local_files_only=False)
@@ -64,7 +65,7 @@ if __name__ == '__main__':
     parsed = []
     is_gemma = True if 'gemma' in args.model else False
     for i, r in zip(instructions, responses):
-        parsed_input, parsed_output = format_instruction(tokenizer, SYSTEM, i, r, no_system=is_gemma)
+        parsed_input, parsed_output = format_instruction(tokenizer, SYSTEM, i, r, no_system=is_gemma, only_generation=args.only_generation)
         parsed.append({"input": parsed_input, "output": parsed_output})
 
     if args.sample > 0:
