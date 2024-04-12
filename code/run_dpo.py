@@ -79,6 +79,9 @@ def main():
     #####################################
     data_args.truncation_side = "left"  # Truncate from left to ensure we don't lose labels in final turn
     tokenizer = get_tokenizer(model_args, data_args)
+    if tokenizer.bos_token is None:
+        tokenizer.add_special_tokens({"bos_token": tokenizer.eos_token})
+        tokenizer.bos_token_id = tokenizer.eos_token_id
 
     #####################
     # Apply chat template

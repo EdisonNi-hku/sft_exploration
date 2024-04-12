@@ -25,6 +25,11 @@ DEFAULT_CHAT_TEMPLATE = "{% for message in messages %}\n{% if message['role'] ==
 
 COLUMNS_TO_KEEP = ["messages", "chosen", "rejected", "prompt", "completion", "label"]
 
+DEFAULT_SYS_MSG = """You are a helpful, respectful and honest assistant. Always answer as helpfully as possible, while being safe.  Your answers should not include any harmful, unethical, racist, sexist, toxic, dangerous, or illegal content. Please ensure that your responses are socially unbiased and positive in nature.
+
+If a question does not make any sense, or is not factually coherent, explain why instead of answering something not correct. If you don't know the answer to a question, please don't share false information.
+"""
+
 
 def maybe_insert_system_message(messages, tokenizer):
     if messages[0]["role"] == "system":
@@ -37,7 +42,7 @@ def maybe_insert_system_message(messages, tokenizer):
 
     # confirm the jinja template refers to a system message before inserting
     if "system" in chat_template or "<|im_start|>" in chat_template:
-        messages.insert(0, {"role": "system", "content": ""})
+        messages.insert(0, {"role": "system", "content": DEFAULT_SYS_MSG})
 
 
 def apply_chat_template(

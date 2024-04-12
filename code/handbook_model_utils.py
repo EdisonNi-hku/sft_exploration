@@ -73,6 +73,7 @@ def get_tokenizer(
         revision=model_args.model_revision,
         local_files_only=True,
         cache_dir=model_args.cache_dir,
+        trust_remote_code=model_args.trust_remote_code,
     )
     if tokenizer.pad_token_id is None:
         tokenizer.pad_token_id = tokenizer.eos_token_id
