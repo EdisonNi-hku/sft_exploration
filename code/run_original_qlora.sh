@@ -5,11 +5,13 @@ DATA_DIR=$2
 CACHE_DIR=$3
 OUTPUT_DIR=$4
 TRAIN_ON_SOURCE=${5:-False}
+TRUST_REMOTE_CODE=${6:-False}
 
 python qlora.py \
     --model_name_or_path ${MODEL_NAME} \
     --cache_dir ${CACHE_DIR} \
     --output_dir ${OUTPUT_DIR} \
+    --trust_remote_code ${TRUST_REMOTE_CODE} \
     --logging_steps 1 \
     --save_strategy epoch \
     --data_seed 42 \

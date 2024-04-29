@@ -6,7 +6,7 @@ from typing import Optional, Dict
 import logging
 import bitsandbytes as bnb
 import pandas as pd
-from trl import SFTTrainer, DataCollatorForCompletionOnlyLM
+from trl import SFTTrainer, DataCollatorForCompletionOnlyLM, setup_chat_format
 from accelerate import PartialState
 
 import torch
@@ -34,8 +34,10 @@ from transformers.trainer_utils import PREFIX_CHECKPOINT_DIR
 
 logger = logging.getLogger(__name__)
 
-IGNORE_INDEX = -100
+
 DEFAULT_PAD_TOKEN = "[PAD]"
+DEFAULT_SYSTEM = """You are a helpful AI assistant."""
+DEFAULT_CHAT_TEMPLATE = "{% for message in messages %}\n{% if message['role'] == 'user' %}\n{{ '<|user|>\n' + message['content'] + eos_token }}\n{% elif message['role'] == 'system' %}\n{{ '<|system|>\n' + message['content'] + eos_token }}\n{% elif message['role'] == 'assistant' %}\n{{ '<|assistant|>\n'  + message['content'] + eos_token }}\n{% endif %}\n{% if loop.last and add_generation_prompt %}\n{{ '<|assistant|>' }}\n{% endif %}\n{% endfor %}"
 
 
 @dataclass
@@ -77,6 +79,9 @@ class DataArguments:
     packing: bool = field(
         default=False,
         metadata={"help": "Apply packing when fine-tuning or not"}
+    )
+    apply_chat_template: bool = field(
+        default=False,
     )
 
 
@@ -183,6 +188,21 @@ class GenerationArguments:
     length_penalty: Optional[float] = field(default=1.0)
     no_repeat_ngram_size: Optional[int] = field(default=0)
 
+
+def format_prompt(tokenizer, system, input, output, no_system=False):
+    if no_system:
+        chat = [
+            {"role": "user", "content": system + '\n\n' + input},
+            {"role": "assistant", "content": output},
+        ]
+    else:
+        chat = [
+            {"role": "system", "content": system},
+            {"role": "user", "content": input},
+            {"role": "assistant", "content": output},
+        ]
+    formatted_input = tokenizer.apply_chat_template(chat, tokenize=False, add_generation_prompt=False)
+    return formatted_input
 
 def print_trainable_parameters(args, model):
     """
@@ -320,12 +340,15 @@ def get_accelerate_model(args, checkpoint_dir):
         trust_remote_code=args.trust_remote_code,
         local_files_only=True,
     )
-    if tokenizer._pad_token is None:
+    if tokenizer.pad_token is None or tokenizer.pad_token_id == tokenizer.eos_token_id:
         smart_tokenizer_and_embedding_resize(
             special_tokens_dict=dict(pad_token=DEFAULT_PAD_TOKEN),
             tokenizer=tokenizer,
             model=model,
         )
+    if tokenizer.chat_template is None and args.apply_chat_template:
+        model, tokenizer = setup_chat_format(model, tokenizer)
+
     if 'llama' in args.model_name_or_path or isinstance(tokenizer, LlamaTokenizer):
         # LLaMA tokenizer may not have correct special tokens set.
         # Check and add them if missing to prevent them from being parsed into different tokens.
@@ -389,8 +412,12 @@ def local_dataset(dataset_name):
 
 def make_data_module(tokenizer: transformers.PreTrainedTokenizer, args) -> Dict:
     full_dataset = local_dataset(args.dataset)
+    if args.apply_chat_template:
+        parse_function = lambda x: {'input_output': format_prompt(tokenizer, DEFAULT_SYSTEM, x['input'], x['output'])}
+    else:
+        parse_function = lambda x: {'input_output': x['input'] + x['output']}
 
-    dataset = full_dataset.map(lambda x: {'input_output': x['input'] + x['output']})
+    dataset = full_dataset.map(parse_function)
     dataset = dataset.remove_columns(
         [col for col in dataset.column_names if col not in ['input_output']]
     )
